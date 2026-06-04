@@ -2,7 +2,8 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1a1a2e">
     <title>AnimeStream - Nonton Anime Subtitle Indonesia</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -11,20 +12,17 @@
 <body>
     <!-- Navbar -->
     <nav class="navbar">
-        <a href="#" class="nav-brand" onclick="app.goHome()">
+        <a href="#" class="nav-brand" onclick="app.goHome(); return false;">
             <i class="fas fa-play-circle"></i>
-            AnimeStream
+            <span class="brand-text">AnimeStream</span>
         </a>
 
         <div class="nav-links">
             <button class="nav-link active" data-page="home" onclick="app.goHome()">
-                <i class="fas fa-home"></i> Beranda
+                <i class="fas fa-home"></i> <span>Beranda</span>
             </button>
             <button class="nav-link" data-page="ongoing" onclick="app.loadOngoing()">
-                <i class="fas fa-fire"></i> Ongoing
-            </button>
-            <button class="nav-link" data-page="search" onclick="app.focusSearch()">
-                <i class="fas fa-search"></i> Cari
+                <i class="fas fa-fire"></i> <span>Ongoing</span>
             </button>
         </div>
 
@@ -42,29 +40,38 @@
 
     <!-- Mobile Menu -->
     <div class="mobile-menu" id="mobileMenu">
+        <div class="mobile-menu-header">
+            <span class="mobile-menu-title">Menu</span>
+            <button class="mobile-menu-close" onclick="app.toggleMobileMenu()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
         <div class="mobile-search">
             <input type="text" id="mobileSearchInput" placeholder="Cari anime..." onkeyup="app.handleMobileSearch(event)">
+            <button onclick="app.mobileSearch()">
+                <i class="fas fa-search"></i>
+            </button>
         </div>
-        <a href="#" class="mobile-nav-link" onclick="app.goHome(); app.toggleMobileMenu();">
-            <i class="fas fa-home"></i> Beranda
-        </a>
-        <a href="#" class="mobile-nav-link" onclick="app.loadOngoing(); app.toggleMobileMenu();">
-            <i class="fas fa-fire"></i> Ongoing
-        </a>
-        <a href="#" class="mobile-nav-link" onclick="app.focusSearch(); app.toggleMobileMenu();">
-            <i class="fas fa-search"></i> Cari Anime
-        </a>
+        <nav class="mobile-nav">
+            <a href="#" class="mobile-nav-link" onclick="app.goHome(); app.toggleMobileMenu(); return false;">
+                <i class="fas fa-home"></i> Beranda
+            </a>
+            <a href="#" class="mobile-nav-link" onclick="app.loadOngoing(); app.toggleMobileMenu(); return false;">
+                <i class="fas fa-fire"></i> Ongoing
+            </a>
+        </nav>
     </div>
 
+    <!-- Mobile Overlay -->
+    <div class="mobile-overlay" id="mobileOverlay" onclick="app.toggleMobileMenu()"></div>
+
     <!-- Main Content -->
-    <main class="main-content" id="mainContent">
-        <!-- Dynamic content loaded here -->
-    </main>
+    <main class="main-content" id="mainContent"></main>
 
     <!-- Footer -->
     <footer class="footer">
         <p>AnimeStream - Nonton Anime Subtitle Indonesia</p>
-        <p style="margin-top: 8px; font-size: 0.8rem;">Powered by OtakuDesu API</p>
+        <p style="margin-top: 6px; font-size: 0.75rem; opacity: 0.6;">Powered by OtakuDesu API</p>
     </footer>
 
     <!-- Toast Container -->

@@ -1,5 +1,6 @@
 // ============================================
-// ANIMESTREAM - APP LOGIC
+// ANIMESTREAM - APP LOGIC v2.0
+// Mobile-Optimized + Grid Layout
 // ============================================
 
 const CONFIG = {
@@ -30,10 +31,20 @@ const app = {
     },
 
     setupEventListeners() {
+        // Close mobile menu on outside click or overlay click
         document.addEventListener('click', (e) => {
             const menu = document.getElementById('mobileMenu');
             const btn = document.querySelector('.mobile-menu-btn');
-            if (!menu.contains(e.target) && !btn.contains(e.target) && this.state.mobileMenuOpen) {
+            if (this.state.mobileMenuOpen && 
+                !menu.contains(e.target) && 
+                !btn.contains(e.target)) {
+                this.toggleMobileMenu();
+            }
+        });
+
+        // Handle escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.state.mobileMenuOpen) {
                 this.toggleMobileMenu();
             }
         });
@@ -46,12 +57,14 @@ const app = {
         this.state.currentPage = 'home';
         this.updateNavActive('home');
         this.renderHome();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     },
 
     loadOngoing() {
         this.state.currentPage = 'ongoing';
         this.updateNavActive('ongoing');
         this.renderOngoing();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     },
 
     focusSearch() {
@@ -70,7 +83,14 @@ const app = {
 
     toggleMobileMenu() {
         this.state.mobileMenuOpen = !this.state.mobileMenuOpen;
-        document.getElementById('mobileMenu').classList.toggle('open', this.state.mobileMenuOpen);
+        const menu = document.getElementById('mobileMenu');
+        const overlay = document.getElementById('mobileOverlay');
+
+        menu.classList.toggle('open', this.state.mobileMenuOpen);
+        overlay.classList.toggle('show', this.state.mobileMenuOpen);
+
+        // Prevent body scroll when menu is open
+        document.body.style.overflow = this.state.mobileMenuOpen ? 'hidden' : '';
     },
 
     // ============================================
@@ -120,8 +140,16 @@ const app = {
 
     handleMobileSearch(event) {
         if (event.key === 'Enter') {
-            const query = event.target.value.trim();
-            if (query) this.search(query);
+            this.mobileSearch();
+        }
+    },
+
+    async mobileSearch() {
+        const input = document.getElementById('mobileSearchInput');
+        const query = input ? input.value.trim() : '';
+        if (query) {
+            this.toggleMobileMenu();
+            await this.search(query);
         }
     },
 
@@ -140,6 +168,7 @@ const app = {
         if (data && data.status) {
             this.state.searchResults = data.data;
             this.renderSearchResults(query);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     },
 
@@ -153,6 +182,7 @@ const app = {
         if (detailData && detailData.status) {
             this.state.detailData = detailData.data;
             this.renderDetail();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     },
 
@@ -212,7 +242,7 @@ const app = {
     renderOngoing() {
         const main = document.getElementById('mainContent');
         main.innerHTML = `
-            <div class="hero" style="padding: 30px;">
+            <div class="hero" style="padding: 24px 16px 20px;">
                 <div class="hero-content">
                     <h1><i class="fas fa-fire"></i> Anime Ongoing</h1>
                     <p>Daftar anime yang sedang tayang dan update terbaru.</p>
@@ -247,7 +277,7 @@ const app = {
         const results = this.state.searchResults || [];
 
         main.innerHTML = `
-            <div class="hero" style="padding: 30px;">
+            <div class="hero" style="padding: 24px 16px 20px;">
                 <div class="hero-content">
                     <h1><i class="fas fa-search"></i> Hasil Pencarian</h1>
                     <p>${results.length} anime ditemukan untuk "<strong>${this.escapeHtml(query)}</strong>"</p>
@@ -323,7 +353,7 @@ const app = {
                             ${genres.map(g => `<span class="genre-tag">${this.escapeHtml(g)}</span>`).join('')}
                         </div>
 
-                        <div class="detail-actions" style="margin-top: 20px;">
+                        <div class="detail-actions" style="margin-top: 16px;">
                             <button class="btn btn-primary" onclick="app.scrollToEpisodes()">
                                 <i class="fas fa-play"></i> Tonton Episode
                             </button>
@@ -395,7 +425,7 @@ const app = {
 
     scrollToEpisodes() {
         const el = document.getElementById('episodesSection');
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
 
     showProducer() {
@@ -445,14 +475,16 @@ const app = {
 
         main.insertAdjacentHTML('beforeend', downloadHTML);
         const section = document.getElementById('downloadSection');
-        if (section) section.scrollIntoView({ behavior: 'smooth' });
+        if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
 
     renderDownloadCard(download) {
         return `
             <div class="download-card" data-quality="${download.quality}">
-                <div class="quality"><i class="fas fa-video"></i> ${download.quality}</div>
-                <div class="host"><i class="fas fa-server"></i> ${this.escapeHtml(download.host)}</div>
+                <div class="quality-row">
+                    <div class="quality"><i class="fas fa-video"></i> ${download.quality}</div>
+                    <div class="host"><i class="fas fa-server"></i> ${this.escapeHtml(download.host)}</div>
+                </div>
                 <button class="download-btn" onclick="window.open('${download.link}', '_blank')">
                     <i class="fas fa-external-link-alt"></i> Buka Link
                 </button>
@@ -468,7 +500,7 @@ const app = {
 
         document.querySelectorAll('.download-card').forEach(card => {
             const cardQuality = card.dataset.quality;
-            card.style.display = (quality === 'all' || cardQuality === quality) ? 'block' : 'none';
+            card.style.display = (quality === 'all' || cardQuality === quality) ? 'flex' : 'none';
         });
     },
 
@@ -510,7 +542,7 @@ const app = {
                 <div class="poster">
                     <img src="${anime.imageUrl}" alt="${anime.title}" loading="lazy" onerror="this.src='https://via.placeholder.com/200x270/252540/9ca3af?text=No+Image'">
                     <span class="badge ${anime.status === 'Ongoing' ? 'badge-ongoing' : 'badge-complete'}">${anime.status}</span>
-                    <span class="badge badge-score" style="top: 10px; right: 10px; left: auto;"><i class="fas fa-star"></i> ${anime.rating}</span>
+                    <span class="badge badge-score"><i class="fas fa-star"></i> ${anime.rating}</span>
                     <div class="overlay">
                         <div class="play-btn"><i class="fas fa-play"></i></div>
                     </div>
@@ -529,7 +561,7 @@ const app = {
     // RENDER: SKELETON & EMPTY
     // ============================================
     renderSkeletonGrid() {
-        return Array(8).fill(0).map(() => `
+        return `<div class="anime-grid">` + Array(8).fill(0).map(() => `
             <div class="anime-card">
                 <div class="poster skeleton skeleton-card"></div>
                 <div class="info">
@@ -537,7 +569,7 @@ const app = {
                     <div class="skeleton skeleton-text short"></div>
                 </div>
             </div>
-        `).join('');
+        `).join('') + `</div>`;
     },
 
     renderEmptyStateHTML(title, subtitle) {
