@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnimeStream - Nonton Anime Subtitle Indonesia</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <a href="#" class="nav-brand" onclick="app.goHome()">
+            <i class="fas fa-play-circle"></i>
+            AnimeStream
+        </a>
+
+        <div class="nav-links">
+            <button class="nav-link active" data-page="home" onclick="app.goHome()">
+                <i class="fas fa-home"></i> Beranda
+            </button>
+            <button class="nav-link" data-page="ongoing" onclick="app.loadOngoing()">
+                <i class="fas fa-fire"></i> Ongoing
+            </button>
+            <button class="nav-link" data-page="search" onclick="app.focusSearch()">
+                <i class="fas fa-search"></i> Cari
+            </button>
+        </div>
+
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Cari anime..." onkeyup="app.handleSearch(event)">
+            <button onclick="app.search()">
+                <i class="fas fa-search"></i>
+            </button>
+        </div>
+
+        <button class="mobile-menu-btn" onclick="app.toggleMobileMenu()">
+            <i class="fas fa-bars"></i>
+        </button>
+    </nav>
+
+    <!-- Mobile Menu -->
+    <div class="mobile-menu" id="mobileMenu">
+        <div class="mobile-search">
+            <input type="text" id="mobileSearchInput" placeholder="Cari anime..." onkeyup="app.handleMobileSearch(event)">
+        </div>
+        <a href="#" class="mobile-nav-link" onclick="app.goHome(); app.toggleMobileMenu();">
+            <i class="fas fa-home"></i> Beranda
+        </a>
+        <a href="#" class="mobile-nav-link" onclick="app.loadOngoing(); app.toggleMobileMenu();">
+            <i class="fas fa-fire"></i> Ongoing
+        </a>
+        <a href="#" class="mobile-nav-link" onclick="app.focusSearch(); app.toggleMobileMenu();">
+            <i class="fas fa-search"></i> Cari Anime
+        </a>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent">
+        <!-- Dynamic content loaded here -->
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>AnimeStream - Nonton Anime Subtitle Indonesia</p>
+        <p style="margin-top: 8px; font-size: 0.8rem;">Powered by OtakuDesu API</p>
+    </footer>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
