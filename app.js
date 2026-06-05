@@ -1,12 +1,13 @@
 // ============================================
-// ANIMESTREAM - APP LOGIC v2.0
-// Mobile-Optimized + Grid Layout
+// ANIMESTREAM - APP LOGIC v3.0
+// Mobile-Optimized + Touch Gestures + PWA Ready
 // ============================================
 
 const CONFIG = {
     API_BASE: 'https://api.siputzx.my.id/api/anime/otakudesu',
     ITEMS_PER_PAGE: 12,
-    DEBOUNCE_DELAY: 400
+    DEBOUNCE_DELAY: 400,
+    PULL_THRESHOLD: 80
 };
 
 const app = {
@@ -19,7 +20,9 @@ const app = {
         searchQuery: '',
         selectedQuality: 'all',
         mobileMenuOpen: false,
-        loading: false
+        loading: false,
+        ptrStartY: 0,
+        ptrActive: false
     },
 
     // ============================================
@@ -28,6 +31,8 @@ const app = {
     init() {
         this.goHome();
         this.setupEventListeners();
+        this.setupPullToRefresh();
+        this.setupBottomNav();
     },
 
     setupEventListeners() {
@@ -48,6 +53,94 @@ const app = {
                 this.toggleMobileMenu();
             }
         });
+
+        // Prevent zoom on double tap
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', (e) => {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) {
+                e.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, { passive: false });
+    },
+
+    // ============================================
+    // PULL TO REFRESH (Mobile)
+    // ============================================
+    setupPullToRefresh() {
+        const main = document.getElementById('mainContent');
+        const indicator = document.getElementById('ptrIndicator');
+
+        if (!main || !indicator) return;
+
+        document.addEventListener('touchstart', (e) => {
+            if (window.scrollY === 0) {
+                this.state.ptrStartY = e.touches[0].clientY;
+                this.state.ptrActive = true;
+            }
+        }, { passive: true });
+
+        document.addEventListener('touchmove', (e) => {
+            if (!this.state.ptrActive) return;
+
+            const diff = e.touches[0].clientY - this.state.ptrStartY;
+            if (diff > 0 && diff < 150) {
+                indicator.classList.toggle('visible', diff > 30);
+            }
+        }, { passive: true });
+
+        document.addEventListener('touchend', () => {
+            if (!this.state.ptrActive) return;
+
+            const diff = event.changedTouches[0].clientY - this.state.ptrStartY;
+            if (diff > CONFIG.PULL_THRESHOLD) {
+                this.refreshCurrentPage();
+            }
+
+            indicator.classList.remove('visible');
+            this.state.ptrActive = false;
+        }, { passive: true });
+    },
+
+    refreshCurrentPage() {
+        const page = this.state.currentPage;
+        if (page === 'home') {
+            this.goHome();
+        } else if (page === 'ongoing') {
+            this.loadOngoing();
+        } else if (page === 'search') {
+            this.search(this.state.searchQuery);
+        } else if (page === 'detail' && this.state.detailData) {
+            // Re-render detail without re-fetching
+            this.renderDetail();
+        }
+    },
+
+    // ============================================
+    // BOTTOM NAVIGATION
+    // ============================================
+    setupBottomNav() {
+        const bottomNav = document.getElementById('bottomNav');
+        if (!bottomNav) return;
+
+        // Show bottom nav on mobile
+        if (window.innerWidth < 769) {
+            bottomNav.style.display = 'flex';
+        }
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            if (bottomNav) {
+                bottomNav.style.display = window.innerWidth < 769 ? 'flex' : 'none';
+            }
+        });
+    },
+
+    updateBottomNav(page) {
+        document.querySelectorAll('.bottom-nav-item').forEach(item => {
+            item.classList.toggle('active', item.dataset.page === page);
+        });
     },
 
     // ============================================
@@ -56,6 +149,7 @@ const app = {
     goHome() {
         this.state.currentPage = 'home';
         this.updateNavActive('home');
+        this.updateBottomNav('home');
         this.renderHome();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     },
@@ -63,6 +157,7 @@ const app = {
     loadOngoing() {
         this.state.currentPage = 'ongoing';
         this.updateNavActive('ongoing');
+        this.updateBottomNav('ongoing');
         this.renderOngoing();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     },
@@ -72,11 +167,19 @@ const app = {
         if (input) {
             input.focus();
             input.scrollIntoView({ behavior: 'smooth' });
+            // On mobile, open menu and focus search there
+            if (window.innerWidth < 769) {
+                this.toggleMobileMenu();
+                setTimeout(() => {
+                    const mobileInput = document.getElementById('mobileSearchInput');
+                    if (mobileInput) mobileInput.focus();
+                }, 350);
+            }
         }
     },
 
     updateNavActive(page) {
-        document.querySelectorAll('.nav-link').forEach(link => {
+        document.querySelectorAll('.nav-link, .bottom-nav-item').forEach(link => {
             link.classList.toggle('active', link.dataset.page === page);
         });
     },
@@ -99,14 +202,25 @@ const app = {
     async fetchAPI(endpoint) {
         try {
             this.setLoading(true);
-            const response = await fetch(`${CONFIG.API_BASE}${endpoint}`);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+            const response = await fetch(`${CONFIG.API_BASE}${endpoint}`, {
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const data = await response.json();
             this.setLoading(false);
             return data;
         } catch (error) {
             this.setLoading(false);
-            this.showToast('Gagal memuat data: ' + error.message, 'error');
+            if (error.name === 'AbortError') {
+                this.showToast('Request timeout. Coba lagi.', 'error');
+            } else {
+                this.showToast('Gagal memuat data: ' + error.message, 'error');
+            }
             console.error('API Error:', error);
             return null;
         }
@@ -126,6 +240,8 @@ const app = {
     handleSearch(event) {
         if (event.key === 'Enter') {
             this.search();
+            // Blur input to hide keyboard
+            event.target.blur();
             return;
         }
 
@@ -141,6 +257,7 @@ const app = {
     handleMobileSearch(event) {
         if (event.key === 'Enter') {
             this.mobileSearch();
+            event.target.blur();
         }
     },
 
@@ -163,6 +280,7 @@ const app = {
         this.state.searchQuery = query;
         this.state.currentPage = 'search';
         this.updateNavActive('search');
+        this.updateBottomNav('');
 
         const data = await this.fetchAPI(`/search?s=${encodeURIComponent(query)}`);
         if (data && data.status) {
@@ -177,6 +295,8 @@ const app = {
     // ============================================
     async loadDetail(animeUrl) {
         this.state.currentPage = 'detail';
+        this.updateNavActive('');
+        this.updateBottomNav('');
 
         const detailData = await this.fetchAPI(`/detail?url=${encodeURIComponent(animeUrl)}`);
         if (detailData && detailData.status) {
@@ -242,7 +362,7 @@ const app = {
     renderOngoing() {
         const main = document.getElementById('mainContent');
         main.innerHTML = `
-            <div class="hero" style="padding: 24px 16px 20px;">
+            <div class="hero" style="padding: 20px 12px 16px;">
                 <div class="hero-content">
                     <h1><i class="fas fa-fire"></i> Anime Ongoing</h1>
                     <p>Daftar anime yang sedang tayang dan update terbaru.</p>
@@ -277,7 +397,7 @@ const app = {
         const results = this.state.searchResults || [];
 
         main.innerHTML = `
-            <div class="hero" style="padding: 24px 16px 20px;">
+            <div class="hero" style="padding: 20px 12px 16px;">
                 <div class="hero-content">
                     <h1><i class="fas fa-search"></i> Hasil Pencarian</h1>
                     <p>${results.length} anime ditemukan untuk "<strong>${this.escapeHtml(query)}</strong>"</p>
@@ -309,7 +429,7 @@ const app = {
                 <div class="detail-hero-bg" style="background-image: url('${info.imageUrl}')"></div>
                 <div class="detail-hero-content">
                     <div class="detail-poster">
-                        <img src="${info.imageUrl}" alt="${info.title}" onerror="this.src='https://via.placeholder.com/220x300/252540/9ca3af?text=No+Image'">
+                        <img src="${info.imageUrl}" alt="${info.title}" loading="lazy" onerror="this.src='https://via.placeholder.com/220x300/252540/9ca3af?text=No+Image'">
                     </div>
                     <div class="detail-info">
                         <button class="back-btn" onclick="app.goHome()">
@@ -353,7 +473,7 @@ const app = {
                             ${genres.map(g => `<span class="genre-tag">${this.escapeHtml(g)}</span>`).join('')}
                         </div>
 
-                        <div class="detail-actions" style="margin-top: 16px;">
+                        <div class="detail-actions" style="margin-top: 12px;">
                             <button class="btn btn-primary" onclick="app.scrollToEpisodes()">
                                 <i class="fas fa-play"></i> Tonton Episode
                             </button>
@@ -604,7 +724,15 @@ const app = {
         `;
 
         container.appendChild(toast);
-        setTimeout(() => toast.remove(), 3000);
+
+        // Vibrate on mobile for feedback
+        if (navigator.vibrate && type === 'error') {
+            navigator.vibrate(50);
+        }
+
+        setTimeout(() => {
+            if (toast.parentNode) toast.remove();
+        }, 3000);
     }
 };
 
