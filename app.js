@@ -1,6 +1,6 @@
 // ============================================
-// ANIMESTREAM - APP LOGIC v5.0
-// Production Optimized | Zero Memory Leaks | PWA Ready
+// ANIMESTREAM - APP LOGIC v5.1
+// Bug Fixed | Mobile Optimized | PWA Ready
 // ============================================
 
 const CONFIG = {
@@ -328,7 +328,7 @@ const app = (() => {
     }
 
     // ============================================
-    // PULL TO REFRESH
+    // PULL TO REFRESH - FIXED: event parameter
     // ============================================
     function setupPullToRefresh() {
         const indicator = $('#ptrIndicator');
@@ -347,9 +347,10 @@ const app = (() => {
             if (diff > 0 && diff < 150) indicator.classList.toggle('visible', diff > 30);
         }, { passive: true });
 
-        addListener(document, 'touchend', () => {
+        // FIXED: Added 'e' parameter to touchend handler
+        addListener(document, 'touchend', (e) => {
             if (!state.ptrActive) return;
-            const diff = event.changedTouches[0].clientY - state.ptrStartY;
+            const diff = e.changedTouches[0].clientY - state.ptrStartY;
             if (diff > CONFIG.PULL_THRESHOLD) refreshCurrentPage();
             indicator.classList.remove('visible');
             state.ptrActive = false;
@@ -406,13 +407,13 @@ const app = (() => {
             const menu = $('#mobileMenu');
             const btn = $('.mobile-menu-btn');
             if (state.mobileMenuOpen && menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) {
-                toggleMobileMenu();
+                closeMobileMenu();
             }
         });
 
         // Escape key
         addListener(document, 'keydown', (e) => {
-            if (e.key === 'Escape' && state.mobileMenuOpen) toggleMobileMenu();
+            if (e.key === 'Escape' && state.mobileMenuOpen) closeMobileMenu();
         });
 
         // Prevent double-tap zoom
@@ -475,21 +476,37 @@ const app = (() => {
         });
     }
 
-    function toggleMobileMenu() {
-        state.mobileMenuOpen = !state.mobileMenuOpen;
+    // FIXED: Separate open/close functions instead of toggle
+    function openMobileMenu() {
+        state.mobileMenuOpen = true;
         const menu = $('#mobileMenu');
         const overlay = $('#mobileOverlay');
-        if (menu) menu.classList.toggle('open', state.mobileMenuOpen);
-        if (overlay) overlay.classList.toggle('show', state.mobileMenuOpen);
-        document.body.style.overflow = state.mobileMenuOpen ? 'hidden' : '';
+        if (menu) menu.classList.add('open');
+        if (overlay) overlay.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeMobileMenu() {
+        state.mobileMenuOpen = false;
+        const menu = $('#mobileMenu');
+        const overlay = $('#mobileOverlay');
+        if (menu) menu.classList.remove('open');
+        if (overlay) overlay.classList.remove('show');
+        document.body.style.overflow = '';
+    }
+
+    function toggleMobileMenu() {
+        if (state.mobileMenuOpen) closeMobileMenu();
+        else openMobileMenu();
     }
 
     // ============================================
-    // SEARCH
+    // SEARCH - FIXED: proper parameter handling
     // ============================================
     function handleSearch(event) {
         if (event.key === 'Enter') {
-            search();
+            const query = event.target.value.trim();
+            if (query) search(query);
             event.target.blur();
             return;
         }
@@ -503,7 +520,7 @@ const app = (() => {
     function handleMobileSearch(event) {
         if (event.key === 'Enter') {
             const query = $('#mobileSearchInput')?.value.trim();
-            if (query) { toggleMobileMenu(); search(query); }
+            if (query) { closeMobileMenu(); search(query); }
             event.target.blur();
         }
     }
@@ -599,17 +616,22 @@ const app = (() => {
         fetchOngoingForHome();
     }
 
+    // FIXED: Added try-catch for fetchOngoingForHome
     async function fetchOngoingForHome() {
-        if (state.ongoingData) {
-            const grid = $('#ongoingGrid');
-            if (grid) grid.innerHTML = renderAnimeCards(state.ongoingData.slice(0, 8));
-            return;
-        }
-        const data = await fetchAPI('/ongoing');
-        if (data?.status) {
-            state.ongoingData = data.data;
-            const grid = $('#ongoingGrid');
-            if (grid) grid.innerHTML = renderAnimeCards(data.data.slice(0, 8));
+        try {
+            if (state.ongoingData) {
+                const grid = $('#ongoingGrid');
+                if (grid) grid.innerHTML = renderAnimeCards(state.ongoingData.slice(0, 8));
+                return;
+            }
+            const data = await fetchAPI('/ongoing');
+            if (data?.status) {
+                state.ongoingData = data.data;
+                const grid = $('#ongoingGrid');
+                if (grid) grid.innerHTML = renderAnimeCards(data.data.slice(0, 8));
+            }
+        } catch (err) {
+            console.error('fetchOngoingForHome error:', err);
         }
     }
 
@@ -886,7 +908,7 @@ const app = (() => {
     }
 
     // ============================================
-    // RENDER: DOWNLOAD
+    // RENDER: DOWNLOAD - FIXED: proper DOM insertion
     // ============================================
     function renderDownloadSection() {
         const download = state.downloadData;
@@ -896,37 +918,39 @@ const app = (() => {
         const main = $('#mainContent');
         if (!main) return;
 
-        $('#downloadSection')?.remove();
+        const existing = $('#downloadSection');
+        if (existing) existing.remove();
 
-        const html = `
-            <div class="section" id="downloadSection">
-                <div class="section-header">
-                    <h2 class="section-title"><i class="fas fa-download"></i> Download</h2>
-                    <button class="btn btn-outline btn-sm" onclick="document.getElementById('downloadSection').remove()">
-                        <i class="fas fa-times"></i> Tutup
-                    </button>
-                </div>
-                <div class="quality-filter">
-                    <button class="quality-btn active" onclick="app.filterQuality('all',this)">Semua</button>
-                    ${qualities.map(q => `<button class="quality-btn" onclick="app.filterQuality('${q}',this)">${q}</button>`).join('')}
-                </div>
-                <div class="download-grid" id="downloadGrid">
-                    ${downloads.map(d => `
-                        <div class="download-card" data-quality="${d.quality}">
-                            <div class="quality-row">
-                                <div class="quality"><i class="fas fa-video"></i> ${d.quality}</div>
-                                <div class="host"><i class="fas fa-server"></i> ${esc(d.host)}</div>
-                            </div>
-                            <button class="download-btn" onclick="window.open('${d.link}','_blank')">
-                                <i class="fas fa-external-link-alt"></i> Buka Link
-                            </button>
+        const section = document.createElement('div');
+        section.className = 'section';
+        section.id = 'downloadSection';
+        section.innerHTML = `
+            <div class="section-header">
+                <h2 class="section-title"><i class="fas fa-download"></i> Download</h2>
+                <button class="btn btn-outline btn-sm" onclick="document.getElementById('downloadSection').remove()">
+                    <i class="fas fa-times"></i> Tutup
+                </button>
+            </div>
+            <div class="quality-filter">
+                <button class="quality-btn active" onclick="app.filterQuality('all',this)">Semua</button>
+                ${qualities.map(q => `<button class="quality-btn" onclick="app.filterQuality('${q}',this)">${q}</button>`).join('')}
+            </div>
+            <div class="download-grid" id="downloadGrid">
+                ${downloads.map(d => `
+                    <div class="download-card" data-quality="${d.quality}">
+                        <div class="quality-row">
+                            <div class="quality"><i class="fas fa-video"></i> ${d.quality}</div>
+                            <div class="host"><i class="fas fa-server"></i> ${esc(d.host)}</div>
                         </div>
-                    `).join('')}
-                </div>
+                        <button class="download-btn" onclick="window.open('${d.link}','_blank')">
+                            <i class="fas fa-external-link-alt"></i> Buka Link
+                        </button>
+                    </div>
+                `).join('')}
             </div>
         `;
-        main.insertAdjacentHTML('beforeend', html);
-        $('#downloadSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        main.appendChild(section);
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function filterQuality(quality, btn) {
@@ -962,6 +986,7 @@ const app = (() => {
         `).join('');
     }
 
+    // FIXED: Proper spacing in onclick handler
     function renderSearchCards(list) {
         if (!list?.length) return renderEmptyState('Tidak ada hasil', 'Coba kata kunci lain');
         return list.map(a => {
@@ -977,7 +1002,7 @@ const app = (() => {
                 <div class="info">
                     <div class="title">${esc(a.title)}</div>
                     <div class="meta"><span><i class="fas fa-film"></i> ${a.genres}</span></div>
-                    <button class="watchlist-btn-mini ${saved ? 'saved' : ''}" data-link="${a.link}" onclick="event.stopPropagation();app.toggleWatchlist({title:'${esc(a.title)}',link:'${a.link}',image:'${a.imageUrl}'})">
+                    <button class="watchlist-btn-mini ${saved ? 'saved' : ''}" data-link="${a.link}" onclick="event.stopPropagation(); app.toggleWatchlist({title:'${esc(a.title)}',link:'${a.link}',image:'${a.imageUrl}'})">
                         <i class="${saved ? 'fas' : 'far'} fa-heart"></i>
                     </button>
                 </div>
@@ -1095,7 +1120,7 @@ const app = (() => {
     // ---- Public API ----
     return {
         init, goHome, loadOngoing, loadWatchlistPage, loadHistoryPage,
-        loadDetail, loadDownload, focusSearch, toggleMobileMenu,
+        loadDetail, loadDownload, focusSearch, toggleMobileMenu, closeMobileMenu,
         handleSearch, handleMobileSearch, search, mobileSearch: search,
         toggleTheme, toggleWatchlist, shareAnime, clearHistory,
         scrollToEpisodes, filterQuality, setFilter, setSort

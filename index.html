@@ -55,21 +55,22 @@
     <div class="mobile-menu" id="mobileMenu">
         <div class="mobile-menu-header">
             <span class="mobile-menu-title">Menu</span>
-            <button class="mobile-menu-close" onclick="app.toggleMobileMenu()" aria-label="Close"><i class="fas fa-times"></i></button>
+            <button class="mobile-menu-close" onclick="app.closeMobileMenu()" aria-label="Close"><i class="fas fa-times"></i></button>
         </div>
         <div class="mobile-search">
             <input type="text" id="mobileSearchInput" placeholder="Cari anime..." onkeyup="app.handleMobileSearch(event)" autocomplete="off" autocorrect="off" autocapitalize="off" enterkeyhint="search">
             <button onclick="app.search()" aria-label="Search"><i class="fas fa-search"></i></button>
         </div>
         <nav class="mobile-nav">
-            <a href="#" class="mobile-nav-link" onclick="app.goHome();app.toggleMobileMenu();return false;"><i class="fas fa-home"></i> Beranda</a>
-            <a href="#" class="mobile-nav-link" onclick="app.loadOngoing();app.toggleMobileMenu();return false;"><i class="fas fa-fire"></i> Ongoing</a>
-            <a href="#" class="mobile-nav-link" onclick="app.loadWatchlistPage();app.toggleMobileMenu();return false;"><i class="fas fa-heart"></i> Watchlist</a>
-            <a href="#" class="mobile-nav-link" onclick="app.loadHistoryPage();app.toggleMobileMenu();return false;"><i class="fas fa-history"></i> Riwayat</a>
+            <a href="#" class="mobile-nav-link" onclick="app.goHome();app.closeMobileMenu();return false;"><i class="fas fa-home"></i> Beranda</a>
+            <a href="#" class="mobile-nav-link" onclick="app.loadOngoing();app.closeMobileMenu();return false;"><i class="fas fa-fire"></i> Ongoing</a>
+            <a href="#" class="mobile-nav-link" onclick="app.loadWatchlistPage();app.closeMobileMenu();return false;"><i class="fas fa-heart"></i> Watchlist</a>
+            <a href="#" class="mobile-nav-link" onclick="app.loadHistoryPage();app.closeMobileMenu();return false;"><i class="fas fa-history"></i> Riwayat</a>
             <a href="#" class="mobile-nav-link" onclick="app.toggleTheme();return false;"><i class="fas fa-moon" id="mobileThemeIcon"></i> Ganti Tema</a>
         </nav>
     </div>
-    <div class="mobile-overlay" id="mobileOverlay" onclick="app.toggleMobileMenu()"></div>
+    <!-- FIXED: Overlay now calls closeMobileMenu instead of toggle -->
+    <div class="mobile-overlay" id="mobileOverlay" onclick="app.closeMobileMenu()"></div>
 
     <!-- Main Content -->
     <main class="main-content" id="mainContent"></main>
