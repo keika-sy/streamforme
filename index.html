@@ -10,7 +10,6 @@
     <meta name="format-detection" content="telephone=no">
     <title>AnimeStream - Nonton Anime Subtitle Indonesia</title>
 
-    <!-- Preconnect for faster loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://api.siputzx.my.id">
@@ -21,7 +20,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 
-    <!-- Prevent FOUC - Theme applied before render -->
     <script>
         (function() {
             const t = localStorage.getItem('as_theme') || 'dark';
@@ -30,10 +28,8 @@
     </script>
 </head>
 <body>
-    <!-- Pull-to-Refresh -->
     <div class="ptr-indicator" id="ptrIndicator"><div class="ptr-spinner"></div></div>
 
-    <!-- Navbar -->
     <nav class="navbar">
         <a href="#" class="nav-brand" onclick="app.goHome();return false;">
             <i class="fas fa-play-circle"></i>
@@ -51,7 +47,6 @@
         <button class="mobile-menu-btn" onclick="app.toggleMobileMenu()" aria-label="Menu"><i class="fas fa-bars"></i></button>
     </nav>
 
-    <!-- Mobile Menu -->
     <div class="mobile-menu" id="mobileMenu">
         <div class="mobile-menu-header">
             <span class="mobile-menu-title">Menu</span>
@@ -69,13 +64,10 @@
             <a href="#" class="mobile-nav-link" onclick="app.toggleTheme();return false;"><i class="fas fa-moon" id="mobileThemeIcon"></i> Ganti Tema</a>
         </nav>
     </div>
-    <!-- FIXED: Overlay now calls closeMobileMenu instead of toggle -->
     <div class="mobile-overlay" id="mobileOverlay" onclick="app.closeMobileMenu()"></div>
 
-    <!-- Main Content -->
     <main class="main-content" id="mainContent"></main>
 
-    <!-- Bottom Nav -->
     <nav class="bottom-nav" id="bottomNav">
         <button class="bottom-nav-item active" data-page="home" onclick="app.goHome()"><i class="fas fa-home"></i><span>Beranda</span></button>
         <button class="bottom-nav-item" data-page="ongoing" onclick="app.loadOngoing()"><i class="fas fa-fire"></i><span>Ongoing</span></button>
@@ -83,13 +75,11 @@
         <button class="bottom-nav-item" onclick="app.loadWatchlistPage()"><i class="fas fa-heart"></i><span>Watchlist</span></button>
     </nav>
 
-    <!-- Footer -->
     <footer class="footer">
         <p>AnimeStream - Nonton Anime Subtitle Indonesia</p>
         <p style="margin-top:6px;font-size:.75rem;opacity:.6">Powered by OtakuDesu API</p>
     </footer>
 
-    <!-- Toast -->
     <div class="toast-container" id="toastContainer"></div>
 
     <script src="app.js"></script>

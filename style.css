@@ -1,5 +1,5 @@
 /* ============================================
-   ANIMESTREAM v5.1 - Bug Fixed & Mobile Optimized CSS
+   ANIMESTREAM v5.2 - Timeout Fix & Mobile Optimized CSS
    ============================================ */
 
 /* ---- CSS Variables ---- */
@@ -31,6 +31,7 @@
 [data-theme="light"] .episode-item .ep-action{background:rgba(255,107,53,.08)}
 [data-theme="light"] .mobile-menu-header{border-color:rgba(0,0,0,.08)}
 [data-theme="light"] .mobile-nav-link:active{background:rgba(255,107,53,.08)}
+[data-theme="light"] .error-state i{color:var(--err)}
 
 /* ---- Reset ---- */
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -233,6 +234,12 @@ body{font-family:'Poppins',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 .empty-state h3{font-size:1.05rem;margin-bottom:6px;font-weight:600}
 .empty-state p{color:var(--tm);font-size:.82rem}
 
+/* ---- Error State - NEW ---- */
+.error-state{text-align:center;padding:40px 16px}
+.error-state i{font-size:2.5rem;color:var(--err);margin-bottom:14px;opacity:.8}
+.error-state h3{font-size:1.05rem;margin-bottom:6px;font-weight:600}
+.error-state p{color:var(--tm);font-size:.82rem;margin-bottom:8px}
+
 /* ---- Skeleton ---- */
 .skeleton{background:linear-gradient(90deg,var(--cb) 25%,var(--ch) 50%,var(--cb) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:var(--rx)}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
@@ -263,7 +270,7 @@ body{font-family:'Poppins',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 .bottom-nav-item.active{color:var(--p)}.bottom-nav-item.active i{transform:translateY(-2px)}.bottom-nav-item:active{transform:scale(.95)}
 
 /* ============================================
-   MOBILE OPTIMIZATIONS - Touch Targets & Font Sizes
+   MOBILE OPTIMIZATIONS
    ============================================ */
 
 /* Extra small devices */

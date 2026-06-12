@@ -1,6 +1,6 @@
 // ============================================
-// ANIMESTREAM - APP LOGIC v5.1
-// Bug Fixed | Mobile Optimized | PWA Ready
+// ANIMESTREAM - APP LOGIC v5.2
+// Timeout Fix | Mobile Optimized | PWA Ready
 // ============================================
 
 const CONFIG = {
@@ -9,7 +9,7 @@ const CONFIG = {
     DEBOUNCE_DELAY: 300,
     PULL_THRESHOLD: 80,
     CACHE_DURATION: 1000 * 60 * 30,
-    TIMEOUT_MS: 12000,
+    TIMEOUT_MS: 15000,
     MAX_HISTORY: 50,
     MAX_WATCHLIST: 100
 };
@@ -51,7 +51,8 @@ const app = (() => {
         abortController: null,
         searchTimeout: null,
         imageObserver: null,
-        apiCache: new Map()
+        apiCache: new Map(),
+        ongoingFetchInProgress: false
     };
 
     let listeners = [];
@@ -227,9 +228,9 @@ const app = (() => {
     }
 
     // ============================================
-    // API - Robust with AbortController
+    // API - FIXED: Proper timeout & error handling
     // ============================================
-    async function fetchAPI(endpoint) {
+    async function fetchAPI(endpoint, options = {}) {
         if (!state.isOnline) {
             showToast('Tidak ada koneksi internet', 'error');
             return null;
@@ -237,43 +238,56 @@ const app = (() => {
 
         const cacheKey = endpoint;
         const cached = getCached(cacheKey);
-        if (cached) return cached;
+        if (cached && !options.noCache) return cached;
 
-        abortPending();
-        state.abortController = new AbortController();
-        const timeoutId = setTimeout(() => state.abortController.abort(), CONFIG.TIMEOUT_MS);
+        // Don't abort if this is a background fetch (ongoing)
+        if (!options.background) {
+            abortPending();
+        }
+
+        const controller = new AbortController();
+        if (!options.background) {
+            state.abortController = controller;
+        }
+
+        const timeoutId = setTimeout(() => {
+            controller.abort();
+        }, CONFIG.TIMEOUT_MS);
 
         try {
-            setLoading(true);
+            if (!options.silent) setLoading(true);
             const res = await fetch(`${CONFIG.API_BASE}${endpoint}`, {
-                signal: state.abortController.signal
+                signal: controller.signal
             });
             clearTimeout(timeoutId);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
-            setCached(cacheKey, data);
-            setLoading(false);
+            if (!options.noCache) setCached(cacheKey, data);
+            if (!options.silent) setLoading(false);
             return data;
         } catch (err) {
             clearTimeout(timeoutId);
-            setLoading(false);
+            if (!options.silent) setLoading(false);
+
+            // FIXED: Distinguish between timeout and other errors
             if (err.name === 'AbortError') {
-                showToast('Request timeout. Coba lagi.', 'error');
+                // Check if it was our timeout or user abort
+                if (!controller.signal.aborted) {
+                    showToast('Request timeout. Coba lagi.', 'error');
+                }
             } else {
                 showToast('Gagal memuat: ' + err.message, 'error');
             }
             return null;
         } finally {
-            state.abortController = null;
+            if (!options.background) {
+                state.abortController = null;
+            }
         }
     }
 
     function setLoading(v) {
         state.loading = v;
-        const main = $('#mainContent');
-        if (v && main && !main.innerHTML.trim()) {
-            main.innerHTML = renderSkeletonGrid();
-        }
     }
 
     // ============================================
@@ -347,7 +361,6 @@ const app = (() => {
             if (diff > 0 && diff < 150) indicator.classList.toggle('visible', diff > 30);
         }, { passive: true });
 
-        // FIXED: Added 'e' parameter to touchend handler
         addListener(document, 'touchend', (e) => {
             if (!state.ptrActive) return;
             const diff = e.changedTouches[0].clientY - state.ptrStartY;
@@ -391,6 +404,8 @@ const app = (() => {
         addListener(window, 'online', () => {
             state.isOnline = true;
             showToast('Koneksi tersambung kembali', 'success');
+            // Auto-refresh current page data
+            if (state.currentPage === 'home') fetchOngoingForHome();
         });
         addListener(window, 'offline', () => {
             state.isOnline = false;
@@ -402,7 +417,6 @@ const app = (() => {
     // EVENT LISTENERS
     // ============================================
     function setupEventListeners() {
-        // Close menu on outside click
         addListener(document, 'click', (e) => {
             const menu = $('#mobileMenu');
             const btn = $('.mobile-menu-btn');
@@ -411,12 +425,10 @@ const app = (() => {
             }
         });
 
-        // Escape key
         addListener(document, 'keydown', (e) => {
             if (e.key === 'Escape' && state.mobileMenuOpen) closeMobileMenu();
         });
 
-        // Prevent double-tap zoom
         let lastTouchEnd = 0;
         addListener(document, 'touchend', (e) => {
             const now = Date.now();
@@ -436,7 +448,7 @@ const app = (() => {
         updateBottomNav(page);
         renderFn();
         window.scrollTo({ top: 0, behavior: 'smooth' });
-        setupEventListeners(); // Re-attach for new DOM
+        setupEventListeners();
         setupImageObserver();
         observeImages();
     }
@@ -476,7 +488,6 @@ const app = (() => {
         });
     }
 
-    // FIXED: Separate open/close functions instead of toggle
     function openMobileMenu() {
         state.mobileMenuOpen = true;
         const menu = $('#mobileMenu');
@@ -501,7 +512,7 @@ const app = (() => {
     }
 
     // ============================================
-    // SEARCH - FIXED: proper parameter handling
+    // SEARCH
     // ============================================
     function handleSearch(event) {
         if (event.key === 'Enter') {
@@ -579,7 +590,7 @@ const app = (() => {
     }
 
     // ============================================
-    // RENDER: HOME
+    // RENDER: HOME - FIXED: Proper loading states
     // ============================================
     function renderHome() {
         const main = $('#mainContent');
@@ -613,25 +624,40 @@ const app = (() => {
                 <div id="ongoingGrid">${renderSkeletonGrid()}</div>
             </div>
         `;
-        fetchOngoingForHome();
+        // FIXED: Delay fetch to let DOM render first
+        requestAnimationFrame(() => {
+            fetchOngoingForHome();
+        });
     }
 
-    // FIXED: Added try-catch for fetchOngoingForHome
+    // FIXED: Prevent duplicate fetches, better error handling
     async function fetchOngoingForHome() {
+        if (state.ongoingFetchInProgress) return;
+        state.ongoingFetchInProgress = true;
+
         try {
             if (state.ongoingData) {
                 const grid = $('#ongoingGrid');
                 if (grid) grid.innerHTML = renderAnimeCards(state.ongoingData.slice(0, 8));
+                state.ongoingFetchInProgress = false;
                 return;
             }
-            const data = await fetchAPI('/ongoing');
+
+            const data = await fetchAPI('/ongoing', { background: true, silent: true });
             if (data?.status) {
                 state.ongoingData = data.data;
                 const grid = $('#ongoingGrid');
                 if (grid) grid.innerHTML = renderAnimeCards(data.data.slice(0, 8));
+            } else {
+                const grid = $('#ongoingGrid');
+                if (grid) grid.innerHTML = renderErrorState('Gagal memuat anime', 'Coba refresh halaman');
             }
         } catch (err) {
             console.error('fetchOngoingForHome error:', err);
+            const grid = $('#ongoingGrid');
+            if (grid) grid.innerHTML = renderErrorState('Gagal memuat anime', 'Periksa koneksi internet');
+        } finally {
+            state.ongoingFetchInProgress = false;
         }
     }
 
@@ -685,10 +711,23 @@ const app = (() => {
     }
 
     async function fetchOngoingFull() {
-        const data = await fetchAPI('/ongoing');
-        if (data?.status) {
-            state.ongoingData = data.data;
-            renderOngoingList();
+        if (state.ongoingFetchInProgress) return;
+        state.ongoingFetchInProgress = true;
+
+        try {
+            const data = await fetchAPI('/ongoing');
+            if (data?.status) {
+                state.ongoingData = data.data;
+                renderOngoingList();
+            } else {
+                const grid = $('#ongoingFullGrid');
+                if (grid) grid.innerHTML = renderErrorState('Gagal memuat anime', 'Coba refresh halaman');
+            }
+        } catch (err) {
+            const grid = $('#ongoingFullGrid');
+            if (grid) grid.innerHTML = renderErrorState('Gagal memuat anime', 'Periksa koneksi internet');
+        } finally {
+            state.ongoingFetchInProgress = false;
         }
     }
 
@@ -908,7 +947,7 @@ const app = (() => {
     }
 
     // ============================================
-    // RENDER: DOWNLOAD - FIXED: proper DOM insertion
+    // RENDER: DOWNLOAD
     // ============================================
     function renderDownloadSection() {
         const download = state.downloadData;
@@ -986,7 +1025,6 @@ const app = (() => {
         `).join('');
     }
 
-    // FIXED: Proper spacing in onclick handler
     function renderSearchCards(list) {
         if (!list?.length) return renderEmptyState('Tidak ada hasil', 'Coba kata kunci lain');
         return list.map(a => {
@@ -1011,7 +1049,7 @@ const app = (() => {
     }
 
     // ============================================
-    // RENDER: SKELETON & EMPTY
+    // RENDER: SKELETON, EMPTY & ERROR
     // ============================================
     function renderSkeletonGrid() {
         return `<div class="anime-grid">${Array(8).fill(0).map(() => `
@@ -1027,6 +1065,18 @@ const app = (() => {
 
     function renderEmptyState(title, subtitle) {
         return `<div class="empty-state"><i class="fas fa-film"></i><h3>${title}</h3><p>${subtitle}</p></div>`;
+    }
+
+    // NEW: Error state with retry button
+    function renderErrorState(title, subtitle) {
+        return `<div class="error-state">
+            <i class="fas fa-exclamation-circle"></i>
+            <h3>${title}</h3>
+            <p>${subtitle}</p>
+            <button class="btn btn-primary" onclick="app.refreshCurrentPage()" style="margin-top:12px">
+                <i class="fas fa-redo"></i> Coba Lagi
+            </button>
+        </div>`;
     }
 
     // ============================================
@@ -1123,7 +1173,8 @@ const app = (() => {
         loadDetail, loadDownload, focusSearch, toggleMobileMenu, closeMobileMenu,
         handleSearch, handleMobileSearch, search, mobileSearch: search,
         toggleTheme, toggleWatchlist, shareAnime, clearHistory,
-        scrollToEpisodes, filterQuality, setFilter, setSort
+        scrollToEpisodes, filterQuality, setFilter, setSort,
+        refreshCurrentPage
     };
 })();
 
